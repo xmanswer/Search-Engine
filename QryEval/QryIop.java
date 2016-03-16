@@ -62,7 +62,7 @@ public abstract class QryIop extends Qry {
 	 *  The index of the location that the locIterator points to now.
 	 */
 	private int locIteratorIndex = QryIop.INVALID_ITERATOR_INDEX;
-
+	
 	/**
 	 *  Advance the query operator's internal iterator beyond the
 	 *  specified document.
@@ -250,5 +250,4 @@ public abstract class QryIop extends Qry {
 		this.docIteratorIndex = 0;
 		this.locIteratorIndex = 0;
 	}
-
 }

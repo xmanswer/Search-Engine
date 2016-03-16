@@ -60,5 +60,4 @@ public abstract class QrySop extends Qry {
 	 */
 	public abstract double getDefaultScore(RetrievalModel r, int docid)
 			throws IOException;
-
 }

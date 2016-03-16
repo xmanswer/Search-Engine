@@ -59,6 +59,7 @@ public class QryIopTerm extends QryIop {
 		return (this.getTerm() + "." + this.field);
 	}
 
+	//getters and setters for fields
 	public String getTerm() {
 		return term;
 	}

@@ -99,6 +99,15 @@ public abstract class Qry {
 
 	private boolean matchStored = false;	// Operators can cache matches
 	private int matchingDocid;
+	
+	/**
+	 * weight is used for weight operations such as #wsum and #wand
+	 * QrySop will need it to do weighted score calculations
+	 * QryIop will need it to pass the weight to QrySopScore
+	 * default is -1, convenient for identifying whether the currentOp
+	 * is weighted or not 
+	 */
+	private double weight = -1;
 
 	//  --------------- Methods ---------------------------------------
 
@@ -141,9 +150,10 @@ public abstract class Qry {
 		//  operator between a QrySop operator and a QryIop argument.
 
 		if ((this instanceof QrySop) && (q instanceof QryIop)) {
-			Qry impliedOp = new QrySopScore ();
+			Qry impliedOp = new QrySopScore();
 			impliedOp.setDisplayName ("#SCORE");
 			impliedOp.appendArg (q);
+			impliedOp.setWeight(q.getWeight());
 			this.args.add (impliedOp);
 			return;
 		}
@@ -423,6 +433,15 @@ public abstract class Qry {
 			result += this.args.get(i) + " ";
 
 		return (this.displayName + "( " + result + ")");
+	}
+
+	//getter and setter for weight
+	public double getWeight() {
+		return weight;
+	}
+
+	public void setWeight(double weight) {
+		this.weight = weight;
 	}
 
 }

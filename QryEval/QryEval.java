@@ -228,11 +228,10 @@ public class QryEval {
 		while (tokens.hasMoreTokens()) {
 
 			token = tokens.nextToken();
-
+			
 			if (token.matches("[ ,(\t\n\r]")) {
 				continue;
 			} else if (token.equals(")")) {	// Finish current query op.
-
 				// If the current query operator is not an argument to another
 				// query operator (i.e., the opStack is empty when the current
 				// query operator is removed), we're done (assuming correct
@@ -248,32 +247,68 @@ public class QryEval {
 				// higher-level operator.
 
 				Qry arg = currentOp;
+				
+				//if the parent of arg (the new currentOp) is a weight operation
+				//assign the last weight to arg, and expect the next operation to be weight
+				//if no more weight on stack, that means the next should be no weight
+				
 				currentOp = opStack.peek();
+				String parentOp = currentOp.getDisplayName();
+				if(parentOp.equalsIgnoreCase("#wand") || parentOp.equalsIgnoreCase("#wsum")) {
+					arg.setWeight(weightStack.pop());
+					weightExpected = true;
+				} else 
+					weightExpected = false;
+				
 				currentOp.appendArg(arg);
-
+				
+			} else if(weightExpected) { //this token should be weight
+				double weight = Double.parseDouble(token);
+				weightStack.push(weight);
+				weightExpected = false; //the next has to be regular arg
 			} else if (token.equalsIgnoreCase("#or")) {
-				currentOp = new QrySopOr ();
-				currentOp.setDisplayName (token);
+				currentOp = new QrySopOr();
+				currentOp.setDisplayName(token);
 				opStack.push(currentOp);
+				weightExpected = false;
 			} else if (token.equalsIgnoreCase("#syn")) {
 				currentOp = new QryIopSyn();
-				currentOp.setDisplayName (token);
+				currentOp.setDisplayName(token);
 				opStack.push(currentOp);
+				weightExpected = false;
 			} else if (token.equalsIgnoreCase("#and")) {
 				currentOp = new QrySopAnd();
-				currentOp.setDisplayName (token);
+				currentOp.setDisplayName(token);
 				opStack.push(currentOp);
+				weightExpected = false;
 			} else if (token.equalsIgnoreCase("#sum")) {
 				currentOp = new QrySopSum();
-				currentOp.setDisplayName (token);
+				currentOp.setDisplayName(token);
 				opStack.push(currentOp);
+				weightExpected = false;
 			} else if (token.toLowerCase().startsWith("#near")) {
 				int nearInt = Integer.parseInt(token.split("/")[1]);
 				currentOp = new QryIopNear(nearInt);
-				currentOp.setDisplayName (token);
+				currentOp.setDisplayName(token);
 				opStack.push(currentOp);
+				weightExpected = false;
+			} else if (token.toLowerCase().startsWith("#window")) {
+				int windowSize = Integer.parseInt(token.split("/")[1]);
+				currentOp = new QryIopWindow(windowSize);
+				currentOp.setDisplayName(token);
+				opStack.push(currentOp);
+				weightExpected = false;
+			} else if (token.equalsIgnoreCase("#wand")) {
+				currentOp = new QrySopWand();
+				currentOp.setDisplayName(token);
+				opStack.push(currentOp);
+				weightExpected = true; //next token should be weight
+			} else if (token.equalsIgnoreCase("#wsum")) {
+				currentOp = new QrySopWsum();
+				currentOp.setDisplayName(token);
+				opStack.push(currentOp);
+				weightExpected = true; //next token should be weight
 			} else {
-
 				//  Split the token into a term and a field.
 
 				int delimiter = token.indexOf('.');
@@ -301,12 +336,19 @@ public class QryEval {
 				//  multiple terms (e.g., "near" and "death").
 
 				String t[] = tokenizeQuery(term);
-
+				String parentOp = currentOp.getDisplayName();
+				
 				for (int j = 0; j < t.length; j++) {
-
-					Qry termOp = new QryIopTerm(t [j], field);
-
+					Qry	termOp = new QryIopTerm(t[j], field);
+					if(parentOp.equalsIgnoreCase("#wand") || parentOp.equalsIgnoreCase("#wsum")) 
+						termOp.setWeight(weightStack.peek());
 					currentOp.appendArg (termOp);
+				}
+				
+				//next arg is expect to be weight again
+				if(parentOp.equalsIgnoreCase("#wand") || parentOp.equalsIgnoreCase("#wsum")) { 
+					weightStack.pop();
+					weightExpected = true;
 				}
 			}
 		}

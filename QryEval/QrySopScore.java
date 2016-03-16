@@ -186,6 +186,13 @@ public class QrySopScore extends QrySop {
 		}
 	}
 
+	/**
+	 *  getDefaultScore for the Indri retrieval model.
+	 *  @param r The retrieval model that determines how scores are calculated.
+	 *  @param docid the corresponding docid for score calculation
+	 *  @return The document score.
+	 *  @throws IOException Error accessing the Lucene index
+	 */	
 	public double getDefaultScore(RetrievalModel r, int docid) throws IOException {
 		if(r instanceof RetrievalModelIndri) {
 			double mu = ((RetrievalModelIndri) r).getMu();
@@ -243,6 +250,9 @@ public class QrySopScore extends QrySop {
 		
 		//document frequency for this term
 		this.setDfCache(((QryIop) q).getDf());
+		
+		//scoreOp weight should be the same as the QryIop weight it operates on
+		this.setWeight(q.getWeight());
 	}
 	
 /*

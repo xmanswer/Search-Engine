@@ -227,6 +227,13 @@ public class QrySopAnd extends QrySop {
 		}
 	}
 	
+	/**
+	 *  getDefaultScore for the Indri retrieval model.
+	 *  @param r The retrieval model that determines how scores are calculated.
+	 *  @param docid the corresponding docid for score calculation
+	 *  @return The document score.
+	 *  @throws IOException Error accessing the Lucene index
+	 */	
 	public double getDefaultScore(RetrievalModel r, int docid) throws IOException {
 		if(r instanceof RetrievalModelIndri) {
 			double defaultScore = 1.0;
