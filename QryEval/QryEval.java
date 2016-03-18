@@ -131,7 +131,21 @@ public class QryEval {
 		} else if (modelString.equals("indri")) {
 			double mu = Double.parseDouble(parameters.get("Indri:mu"));
 			double lambda = Double.parseDouble(parameters.get("Indri:lambda"));
-			model = new RetrievalModelIndri(mu, lambda);
+			//different settings based on if query expansion is needed
+			if(parameters.containsKey("fb") && parameters.get("fb").equals("true")) {
+				boolean fb = true;
+				int	fbDocs = Integer.parseInt(parameters.get("fbDocs"));
+				int	fbTerms = Integer.parseInt(parameters.get("fbTerms"));
+				int	fbMu = Integer.parseInt(parameters.get("fbMu"));
+				double fbOrigWeight = Double.parseDouble(parameters.get("fbOrigWeight"));
+				String fbExpansionQueryFile = parameters.get("fbExpansionQueryFile");
+				String fbInitialRankingFile = parameters.get("fbInitialRankingFile");
+				model = new RetrievalModelIndri(mu, lambda, fb, fbDocs, 
+						fbTerms, fbMu, fbOrigWeight, fbExpansionQueryFile, 
+						fbInitialRankingFile);
+			} else {
+				model = new RetrievalModelIndri(mu, lambda);
+			}
 		} else {
 			throw new IllegalArgumentException
 			("Unknown retrieval model " + parameters.get("retrievalAlgorithm"));
@@ -183,7 +197,12 @@ public class QryEval {
 
 		if ((q.args.size() == 1) &&
 				(! (q instanceof QrySopScore))) {
-			q = q.args.get (0);
+			if(q.getWeight() < 0)
+				q = q.args.get (0);
+			else { //if the parent operator has weight associated with it
+				q.args.get(0).setWeight(q.getWeight());
+				q = q.args.get(0);
+			}
 		}
 
 		return q;
@@ -433,12 +452,27 @@ public class QryEval {
 
 		BufferedReader input = null;
 		PrintWriter writer = null;
+		boolean queryExpansionExpected = false;
+		if(model instanceof RetrievalModelIndri)
+			queryExpansionExpected = ((RetrievalModelIndri) model).isFb();
+		PrintWriter fbWriter = null;
 
 		try {
 			String qLine = null;
 			
 			input = new BufferedReader(new FileReader(queryFilePath));
 			writer = new PrintWriter(outputFile, "UTF-8");
+			
+			Map<String, List<TermVector>> termVectorListMap = null;
+			if(queryExpansionExpected) {
+				fbWriter = new PrintWriter(((RetrievalModelIndri) model).getFbExpansionQueryFile(), "UTF-8");
+				//parse fbInitialRankingFile if specified
+				String rankingFileName = ((RetrievalModelIndri) model).getFbInitialRankingFile();
+				
+				if(rankingFileName != null && rankingFileName.length() > 0)
+					termVectorListMap = parseRankingFiles(rankingFileName, 
+							(RetrievalModelIndri)model);
+			}
 
 			//  Each pass of the loop processes one query.
 
@@ -456,6 +490,32 @@ public class QryEval {
 				String query = qLine.substring(d + 1);
 
 				System.out.println("Query " + qLine);
+				
+				//if query expansion should be performed
+				if(queryExpansionExpected) {
+					List<TermVector> termVectorList = null;
+					//no fbInitialRankingFile specified
+					if(termVectorListMap == null || termVectorListMap.size() == 0) { 
+						ScoreList preRanking = processQuery(query, model);
+						if(preRanking != null) preRanking.sort();
+						
+						termVectorList = getTermVectorsFromScores(preRanking, 
+								(RetrievalModelIndri)model);
+					} else {
+						termVectorList = termVectorListMap.get(qid);
+					}
+					
+					//generate and print expanded query
+					String newQuery = generateExpandQuery(termVectorList, query, 
+							(RetrievalModelIndri)model);
+					fbWriter.println(qid + ": " + newQuery);
+					
+					//combine expanded new query and old query
+					double fbOrigWeight = ((RetrievalModelIndri) model).getFbOrigWeight();
+					query = "#wand ( " + Double.toString(fbOrigWeight) + 
+							" #and ( " + query + " ) " +
+							Double.toString(1-fbOrigWeight) + " " + newQuery + " )";
+				}
 
 				ScoreList r = null;
 
@@ -473,7 +533,126 @@ public class QryEval {
 		} finally {
 			input.close();
 			writer.close();
+			if(fbWriter != null)
+				fbWriter.close();
 		}
+	}
+	
+	/**
+	 * parse the ranking files and return a map of key(queryid) 
+	 * and value(a list of termvectors)
+	 */
+	private static Map<String, List<TermVector>> parseRankingFiles(String rankingFileName, 
+			RetrievalModelIndri model) throws IOException {
+		
+		Map<String, List<TermVector>> result = new HashMap<String, List<TermVector>>();
+		BufferedReader input = null;
+		
+		try {
+			input = new BufferedReader(new FileReader(rankingFileName));
+			String line = null;
+			
+			while((line = input.readLine()) != null) {
+				String[] strs = line.split(" ");
+				
+				//make sure each list only contains the top fbDocs
+				if(result.containsKey(strs[0]) 
+						&& result.get(strs[0]).size() == model.getFbDocs())
+					continue;
+				
+				List<TermVector> list = null;
+				if(result.containsKey(strs[0])) {
+					list = result.get(strs[0]);
+				} else {
+					list = new ArrayList<TermVector>();
+				}
+				
+				//based on current docid, create a termvector and 
+				//assign the indri score, add it to the list for this query
+				int docid = Idx.getInternalDocid(strs[2]);
+				TermVector termVector = new TermVector(docid, "body");
+				termVector.setIndriScore(Double.parseDouble(strs[4]));
+				list.add(termVector);
+				result.put(strs[0], list);
+			}
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			input.close();
+		}
+		return result;
+	}
+	
+	/**
+	 * parse the generated scorelist and return a list of term vectors
+	 */
+	private static List<TermVector> getTermVectorsFromScores(
+			ScoreList preRanking, RetrievalModelIndri model) throws IOException {
+		List<TermVector> list = new ArrayList<TermVector>();
+		//convert the scorelist to a list of termvector with scores
+		for (int i = 0; i < preRanking.size() && i < model.getFbDocs(); i++) {
+			int docid = preRanking.getDocid(i);
+			TermVector termVector = new TermVector(docid, "body");
+			termVector.setIndriScore(preRanking.getDocidScore(i));
+			list.add(termVector);
+		}
+		return list;
+	}
+	
+	/**
+	 * using the term vectors for this query to generate expanded query
+	 * @throws IOException 
+	 */	
+	private static String generateExpandQuery(
+			List<TermVector> termVectorList, String query, 
+			RetrievalModelIndri model) throws IOException {
+		int fbTerms = model.getFbTerms();
+		int fbMu = model.getFbMu();
+		
+		Map<String, Double> map = new HashMap<String, Double>();
+		//go through each document
+		for(TermVector termVector : termVectorList) {
+			double p_I_d = termVector.getIndriScore();
+			//go through each term in the document and calculate weights
+			for(int i = 1; i < termVector.stemsLength(); i++) {
+				String term = termVector.stemString(i);
+				double tf = termVector.stemFreq(i);
+				double p_t_C = ((double)termVector.totalStemFreq(i)) / ((double)Idx.getSumOfFieldLengths("body"));
+				double p_t_d = (tf + fbMu * p_t_C) / (termVector.positionsLength() + fbMu);
+				double weight = p_I_d * p_t_d * Math.log(1 / p_t_C);
+				if(map.containsKey(term)) {
+					map.put(term, map.get(term) + weight);
+				} else {
+					map.put(term, weight);
+				}
+			}
+		}
+		
+		//sort the map by value (weights) in desc order
+		List<Map.Entry<String, Double>> list = 
+				new ArrayList<Map.Entry<String, Double>>(map.entrySet());
+        Collections.sort(list, new Comparator<Map.Entry<String, Double>>() {
+            public int compare(Map.Entry<String, Double> o1,
+                    Map.Entry<String, Double> o2) {
+                if(o2.getValue() > o1.getValue()) return 1;
+                else if(o2.getValue() < o1.getValue()) return -1;
+                else return 0;
+            }
+        });
+        
+        //append the top fbTerms terms to the final string
+        int termCnt = 0;
+        StringBuilder sb = new StringBuilder();
+        sb.append("#wand ( ");
+        for(Map.Entry<String, Double> entry : list) {
+        	if(termCnt == fbTerms) break;
+        	if(entry.getKey().contains(",") || entry.getKey().contains(".")) continue;
+        	sb.append(Double.toString(entry.getValue())).append(" ").append(entry.getKey()).append(" ");
+        	termCnt++;
+        }
+        sb.append(")");
+        return sb.toString();
 	}
 
 	/**
