@@ -53,7 +53,6 @@ public class QrySopAnd extends QrySop {
 			try {
 				minScore = ((QrySop) q_0).getScore(r);
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 
@@ -84,7 +83,6 @@ public class QrySopAnd extends QrySop {
 				try {
 					score_i = ((QrySop) q_i).getScore(r);
 				} catch (IOException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
 				
@@ -134,16 +132,13 @@ public class QrySopAnd extends QrySop {
 					try {
 						q_iScore = ((QrySop) q_i).getDefaultScore(r, minDocid);
 					} catch (IOException e) {
-						// TODO Auto-generated catch block
 						e.printStackTrace();
 					}
 				} else {
 					//get the score for this term at this doc
-					
 					try {
 						q_iScore = ((QrySop) q_i).getScore(r);
 					} catch (IOException e) {
-						// TODO Auto-generated catch block
 						e.printStackTrace();
 					}
 				}
@@ -153,7 +148,6 @@ public class QrySopAnd extends QrySop {
 				try {
 					q_iScore = ((QrySop) q_i).getDefaultScore(r, minDocid);
 				} catch (IOException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
 				scoreCombine *= Math.pow(q_iScore, reversePower);

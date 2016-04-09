@@ -1,0 +1,7 @@
+indexPath=E:\study\11642\hw\hw1\index-1.1\
+retrievalAlgorithm=BM25
+queryFilePath=E:\study\11642\hw\hw5\HW5-test.qry.txt
+trecEvalOutputPath=E:\study\11642\hw\hw5\output\bm25.teIn
+BM25:k_1=1.2
+BM25:b=0.75
+BM25:k_3=0

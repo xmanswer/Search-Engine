@@ -1,0 +1,6 @@
+indexPath=E:\study\11642\hw\hw1\index-1.1\
+retrievalAlgorithm=Indri
+queryFilePath=E:\study\11642\hw\hw5\HW5-test-sdm.qry.txt
+trecEvalOutputPath=E:\study\11642\hw\hw5\output\indri_sdm.teIn
+Indri:mu=2500
+Indri:lambda=0.4

@@ -4,9 +4,12 @@
  */
 public class RetrievalModelIndri extends RetrievalModel {
 
+	//following fields are basic parameters
 	private double mu;
 	private double lambda;
 	private boolean fb;
+	
+	//following fields are used for query expansion
 	private int	fbDocs;
 	private int	fbTerms;
 	private int	fbMu;
@@ -37,7 +40,8 @@ public class RetrievalModelIndri extends RetrievalModel {
 	public String defaultQrySopName() {
 		return new String("#and");
 	}
-
+	
+	//setters and getters for parameters
 	public double getMu() {
 		return mu;
 	}

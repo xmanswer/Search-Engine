@@ -356,6 +356,7 @@ public abstract class Qry {
 			return false;
 		}
 	}
+
 	
 	/**
 	 *  Return the status of the cache.

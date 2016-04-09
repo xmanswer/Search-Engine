@@ -49,16 +49,13 @@ public class QrySopWand extends QrySop {
 					try {
 						q_iScore = ((QrySop) q_i).getDefaultScore(r, minDocid);
 					} catch (IOException e) {
-						// TODO Auto-generated catch block
 						e.printStackTrace();
 					}
 				} else {
 					//get the score for this term at this doc
-					
 					try {
 						q_iScore = ((QrySop) q_i).getScore(r);
 					} catch (IOException e) {
-						// TODO Auto-generated catch block
 						e.printStackTrace();
 					}
 				}
@@ -69,7 +66,6 @@ public class QrySopWand extends QrySop {
 				try {
 					q_iScore = ((QrySop) q_i).getDefaultScore(r, minDocid);
 				} catch (IOException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
 				totalWeight += q_i.getWeight();

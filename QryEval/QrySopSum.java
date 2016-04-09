@@ -44,7 +44,6 @@ public class QrySopSum extends QrySop {
 				try {
 					q_iScore = ((QrySop) q_i).getScore(r);
 				} catch (IOException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
 				

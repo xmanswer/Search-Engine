@@ -49,7 +49,6 @@ public class QrySopWsum extends QrySop {
 					try {
 						q_iScore = ((QrySop) q_i).getDefaultScore(r, minDocid);
 					} catch (IOException e) {
-						// TODO Auto-generated catch block
 						e.printStackTrace();
 					}
 				} else {
@@ -58,7 +57,6 @@ public class QrySopWsum extends QrySop {
 					try {
 						q_iScore = ((QrySop) q_i).getScore(r);
 					} catch (IOException e) {
-						// TODO Auto-generated catch block
 						e.printStackTrace();
 					}
 				}
@@ -69,7 +67,6 @@ public class QrySopWsum extends QrySop {
 				try {
 					q_iScore = ((QrySop) q_i).getDefaultScore(r, minDocid);
 				} catch (IOException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
 				totalWeight += q_i.getWeight();

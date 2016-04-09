@@ -20,6 +20,8 @@ public class QrySopScore extends QrySop {
 	private double corpLenCache = 0.0; //corpus length for specific field
 	private double N = 0.0; //total number of documents in corpus
 	private String fieldNameString = "body";
+	private long numOfDoc; //total number of documents
+	private int docidTracker = Qry.INVALID_DOCID; //track docid for all-document retrieval
 
 	/**
 	 *  Document-independent values that should be determined just once.
@@ -59,17 +61,15 @@ public class QrySopScore extends QrySop {
 			}
 			return hasMatchFirst;
 		} else if(r instanceof RetrievalModelIndri) {
+			Qry qryIop = this.args.get(0);
 			Boolean hasMatchFirst = this.docIteratorHasMatchFirst (r);
 			if(hasMatchFirst) {
-				Qry qryIop = this.args.get(0);
 				InvList.DocPosting docPo = ((QryIop) qryIop).docIteratorGetMatchPosting();
 				this.setScoreCache(docPo.tf); //set tf
 				int docid = this.docIteratorGetMatch();
-				
 				try { //set docLen corresponding to docid
 					this.setDocLenCache(Idx.getFieldLength(this.getFieldNameString(), docid));
 				} catch (IOException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
 			}
@@ -205,7 +205,6 @@ public class QrySopScore extends QrySop {
 			try { //set docLen and corpLen
 				docLen = Idx.getFieldLength(fieldName, docid);
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 			double p_q_C = ctf / corpLen;
@@ -253,6 +252,12 @@ public class QrySopScore extends QrySop {
 		
 		//scoreOp weight should be the same as the QryIop weight it operates on
 		this.setWeight(q.getWeight());
+		
+		//total number of documents used for calculating score for all documents
+		this.setNumOfDoc(Idx.getNumDocs());
+		
+		//start from docid 0 if want to retrieve all documents
+		this.setDocidTracker(0);
 	}
 	
 /*
@@ -312,6 +317,22 @@ public class QrySopScore extends QrySop {
 
 	public void setFieldNameString(String fieldNameString) {
 		this.fieldNameString = fieldNameString;
+	}
+
+	public long getNumOfDoc() {
+		return numOfDoc;
+	}
+
+	public void setNumOfDoc(long numOfDoc) {
+		this.numOfDoc = numOfDoc;
+	}
+
+	public int getDocidTracker() {
+		return docidTracker;
+	}
+
+	public void setDocidTracker(int docidTracker) {
+		this.docidTracker = docidTracker;
 	}
 
 }
